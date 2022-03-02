@@ -3,34 +3,49 @@ package com.tuto.android_camera;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.util.List;
 
-public class CameraPreviewActivity extends AppCompatActivity implements SurfaceHolder.Callback{
+public class CameraPreviewActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 
     Camera camera;
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
     int cameraId = 1;
 
+    ImageView btnCapture;
+    ImageView btnFlip;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera_preview);
 
+        btnCapture = findViewById(R.id.capture);
+        btnFlip = findViewById(R.id.flip);
+
+        btnCapture.setOnClickListener(this);
+        btnFlip.setOnClickListener(this);
+
         surfaceView = findViewById(R.id.cameraPreview);
 
         surfaceHolder = surfaceView.getHolder();
         surfaceHolder.addCallback(this);
+
+
     }
+
 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder surfaceHolder) {
@@ -46,15 +61,18 @@ public class CameraPreviewActivity extends AppCompatActivity implements SurfaceH
 
     @Override
     public void surfaceDestroyed(@NonNull SurfaceHolder surfaceHolder) {
-
+        releaseCamera();
     }
+
 
     private boolean openCamera(int id){
         boolean result = false;
         cameraId = id;
 
-        //stop camera incase there is running camera
-        releaseCamera();
+        if(camera != null) {
+            //stop camera in case there is running camera
+            releaseCamera();
+        }
 
         try{
             camera = Camera.open(cameraId);
@@ -129,5 +147,49 @@ public class CameraPreviewActivity extends AppCompatActivity implements SurfaceH
             Log.e("Error", e.toString());
             camera = null;
         }
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()){
+            case R.id.capture:
+                captureImage();
+                break;
+            case R.id.flip:
+                flipCamera();
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    public void captureImage(){
+        if(camera != null){
+            camera.takePicture(null, null, mPictureCallback);
+        }
+    }
+
+    Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
+        @Override
+        public void onPictureTaken(byte[] bytes, Camera camera) {
+            try{
+                byte[]  imageData = Setting.rotateImageData(CameraPreviewActivity.this, bytes, cameraId);
+                if(imageData.length > 0){
+                    //Log.e("onPictureTaken", "Success");
+
+                    Intent intent = new Intent();
+                    intent.putExtra("ImageData", imageData);
+                    setResult(Activity.RESULT_OK, intent);
+                    finish();
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    };
+
+    public void flipCamera(){
+
     }
 }
